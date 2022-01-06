@@ -1,101 +1,142 @@
-import { Button } from '@mui/material'
+import { Button, Checkbox, FormControl, FormControlLabel, FormLabel, Radio, RadioGroup } from '@mui/material'
 import React, { useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import { getQuestionByLanguage, Question, questionsList } from '../Question/Questions'
+import { useLocation,useHistory } from 'react-router-dom'
+import { getQuestionByLanguage, Question } from '../Question/Questions'
 import { User } from './Home'
 
-interface Answere{
-    id:number,
-    options:string[]
+interface Answere {
+    id: number,
+    options: string[]
 }
 
+
 const Exam: React.FC = () => {
-    const { state } = useLocation()
-    const newUser = state as User
+   
+    const {state}=useLocation()
 
-    //setState Question
-    const [currentQuestion,setCurrentQuestion]=useState<number>(0)
+    const examUser=state as User
 
-    //ans state
+    const history=useHistory()
 
-    const [answereList,setAnswerList]=useState<Answere[]>([])
+    const [currentQ,setCurrentQ]=useState<number>(0)
 
-    //mathing question from Question and exam
-    const newQuestionList:Question[]=getQuestionByLanguage(newUser.language)
+    const [ansList,setAnsList]=useState<Answere[]>([])
 
-    //mapping question with current Queston state
-    const newCurrentQuestion:Question=newQuestionList[currentQuestion]
+    const questionsList:Question[]=getQuestionByLanguage(examUser.language)
+    const question:Question=questionsList[currentQ]
 
-    const handleSelectOption=(option:string,checked?:boolean)=>{
+    const handleAnsOption=(option:string,checked?:boolean)=>{
 
-        console.log('handleSelect',newCurrentQuestion.id)
+        const find=ansList.find(ans=>ans.id===question.id)
+        if(find){
 
-        const findAns=answereList.find(ans=>ans.id===newCurrentQuestion.id)
-        if(findAns){
-            if(newCurrentQuestion.ans.length >1){
-                const newAnswereList=answereList.map((ans)=>{
+            if(question.ans.length > 1){
 
-                    if(ans.id===newCurrentQuestion.id){
+                const _ansList=ansList.map((ans)=>{
+
+                    if(ans.id===question.id){
                         if(checked){
-                            ans={id:newCurrentQuestion.id,options:[...ans.options]}
+                            ans={id:question.id,options:[...ans.options,option]}
                         }else{
-                            let newOptions=ans.options.filter(op=>op !==option)
-                            ans ={id:newCurrentQuestion.id,options:newOptions}
+                            let _options=ans.options.filter(op=>op!==option)
+                            ans={id:question.id,options:_options}
                         }
-
                     }
-                   return ans
+                    return ans
                 })
-                setAnswerList(newAnswereList)
+                setAnsList(_ansList)
+
+            }else{
+                const _ansList=ansList.map((ans)=>{
+                    if(ans.id===question.id){
+                        ans={id:question.id,options:[option]}
+                    }
+                    return ans
+                })
+                setAnsList(_ansList)
             }
-            else{
-                const _newAnswerList={id:newCurrentQuestion.id,options:[option]}
-                setAnswerList([...answereList,_newAnswerList])
-            }
+
+        }else{
+            const _ans={id:question.id,options:[option]}
+            setAnsList([...ansList,_ans])
         }
     }
-    return (
-        <>
-            <div>
-                <h3>Exam page</h3>
-                <p>You Selected : {newUser.language}</p>
-                <p>{newQuestionList.map(q=>q.title)[0]}</p>
 
-                {newQuestionList.map((question,i)=>(
-                    <span
-                    key={i}
-                    style={{
-                        display:'inline-block',
-                        cursor:'pointer'
-                    }}
-                    onClick={()=>setCurrentQuestion(i)}
-                    >{i + 1}</span>
-                ))}
-            </div>
-            <div>
-                <p>{currentQuestion + 1}. {newCurrentQuestion.title}</p>
-                {
-                    newCurrentQuestion.options.map((option,i)=>(
-                        <div key={i}>
-                            <label key={option}>
-                                {i+1}{
-                                    newCurrentQuestion.ans.length >1 ?
-                                    <input 
-                                    type='checkbox'
-                                    onChange={(e)=>handleSelectOption(option,e.target.checked)}
-                                    ></input>:
-                                    <input type='radio'></input>
-                                }{option}
-                            </label>
-                        </div>
-                    ))
+    const isAns=(option:string)=>{
+        const ans=ansList.find(ans=>ans.id===question.id)
+        if(!ans) return false
+        return !!ans.options.find(op=>op===option)
+    }
+    const handleSubmit=()=>{
+        let count:number=0
+        
+        ansList.forEach(ans=>{
+            for(let q of questionsList){
+                if(ans.id===q.id){
+                    if(JSON.stringify(ans.options)===JSON.stringify(q.ans)){
+                        count ++
+                    }
+                    break
                 }
-            </div>
-            {
-                currentQuestion===(questionsList.length -1) && 
-                <Button>Submit</Button>
             }
-        </>
+        })
+        history.push('/result',count)
+    }
+
+    return (
+        <div>
+           <h4>Exam Page</h4>
+           <p>You Chose : {examUser.language}</p>
+           <div>
+                {getQuestionByLanguage(examUser.language).map((question,i)=>(
+                    <span 
+                    key={i} 
+                    style={{
+                        display: "inline-block",
+                            margin: "4px",
+                            width: "30px",
+                            height: "30px",
+                            lineHeight: "30px",
+                            borderRadius: "50%",
+                            backgroundColor:'red',
+                            cursor:'pointer'
+                    }}
+                    onClick={()=>setCurrentQ(i)}
+                    >{i+1}
+                    </span>
+                ))}
+           </div>
+           <div>
+               <p>{currentQ+1}.{question.title}</p>
+
+               {question.options.map((option,i)=>(
+                   <div key={i}>
+                       <label key={option}>
+                            {i + 1}.
+                            {
+                                question.ans.length>1 ?
+                                <input
+                                type='checkbox' 
+                                checked={isAns(option)}
+                                onChange={(event)=>handleAnsOption(option,event.target.checked)}/>:
+                                <input 
+                                type='radio' 
+                                checked={isAns(option)}
+                                name={question.id.toString()}
+                                onChange={()=>handleAnsOption(option)}/>
+                            }
+                            {option}
+                       </label>
+                   </div>
+               ))}
+               
+           </div>
+           {
+               currentQ===(questionsList.length-1) &&
+               <Button variant='contained' onClick={handleSubmit}>Submit</Button>
+           }
+        </div>
+        
     )
 }
 
